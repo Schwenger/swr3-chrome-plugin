@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+
+  "name": "__MSG_extName__",
+  "description": "This extension will allow you to start and stop swr3's webradio service via an icon in the toolbar. The design mainly focuses on simplicity so we omit adding any unnecessary features.",
+  "version": "1.0",
+  "default_locale": "en",
+
+  "browser_action": {
+    "default_icon": "images/icon16.png"
+  },
+
+  "icons": { 
+  	"16": "images/icon16.png",
+   	"48": "images/icon48.png",
+  	"128": "images/icon128.png" },
+
+  "background":{
+  	"scripts": ["ext/js/jquery.min.js", "main/background.js"]
+  },
+
+  "permissions": [
+  	"storage",
+  	"http://www.swr-mp3-s-swr3/*",
+  	"http://mp3-live.swr3.de/swr3_s.m3u"
+  ]
+
+}
