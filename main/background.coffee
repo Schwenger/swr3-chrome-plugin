@@ -1,19 +1,7 @@
-playlistURL = "http://mp3-live.swr3.de/swr3_s.m3u"
-
-radio = new Radio playlistURL
-
 # We avoid scoping issues by alerting the global scope to update the 
 # radio upon the GET-request's arrival.
 update_radio = (playlist) ->
 	if radio? then radio.accept(playlist) else reset()
-
-trigger = ->
-	console.log "Triggered."
-	radio.trigger()
-
-reset = ->
-	radio.stop()
-	radio = new Radio playlistURL
 
 class Radio
 	# the is and the expected state might deviate if the user repeatedly clicks on
@@ -21,6 +9,8 @@ class Radio
 	_is_on: false
 	_expected_on: false
 	_radio: undefined
+	# 0 if not paused
+	_paused_at: 0
 
 	constructor: (@url) ->
 		@_prepare()
@@ -30,14 +20,15 @@ class Radio
 			@_radio.play()
 			@_is_on = true
 			@_set_icon "green"
+			@_paused_at = 0
 		@_expected_on = true
 
 	stop: ->
 		if @_radio?
-			console.log @_radio
 			@_radio.pause()
 			@_is_on = false
 			@_set_icon "red"
+			@_paused_at = current_time()
 		@_expected_on = false
 
 	trigger: ->
@@ -45,6 +36,20 @@ class Radio
 			if @_is_on then @stop() else @start()
 		else 
 			@_expected_on = !@_expected_on
+
+	paused_since: ->
+		if @_paused_at isnt 0 then (current_time() - @_paused_at) else 0
+
+	kill: ->
+		@_radio?.pause()
+		@_radio?.remove()
+		@_radio = undefined
+		@_is_on = @_expected_on = false
+		@_paused_at = 0
+
+	reset: ->
+		@kill()
+		@_prepare()
 
 	accept: (stream) ->
 		@_create_radio_element stream
@@ -59,12 +64,12 @@ class Radio
 		stream = @_get_stream_url(playlist)
 		radio = document.createElement('audio')
 		radio.setAttribute('src', stream)
-		console.log 
 		@_radio = radio
 		@_align_states()
 
 	_align_states: ->
 		if @_expected_on then @start() else @stop()
+		@_paused_at = 0
 		@_is_on = @_expected_on
 
 	_get_stream_url: (playlist) ->
@@ -76,6 +81,25 @@ class Radio
 			path: "images/icon48#{color}.png"
 		})
 
+#### MAIN LOGIC ####
+playlistURL = "http://mp3-live.swr3.de/swr3_s.m3u"
+
+radio = new Radio playlistURL
+
+reset_threshold = 10 * 60 * 1000 # ms, so 10 minutes
+
+trigger = ->
+	if radio.paused_since() > reset_threshold
+		radio.reset()
+	radio.trigger()
+
+reset = ->
+	radio.kill()
+	radio = new Radio playlistURL
+
+current_time = ->
+	new Date().getTime()
+
 #### CHROME EXTENSION HANDLING ####
 
 chrome.browserAction.onClicked.addListener (tab) ->
@@ -85,7 +109,7 @@ chrome.runtime.onMessageExternal.addListener (request, sender, sendResponse) ->
 	trigger() if (request?.intent is "trigger_swr3")
 
 contextMenuId = chrome.contextMenus.create({
-    "title": "Reset radio",
+    "title": "Kill radio",
     "contexts": ["browser_action"]
     })
 
