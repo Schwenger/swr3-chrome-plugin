@@ -1,12 +1,71 @@
-# used to prevent setting up (most) unnecessary requests to swr3
-initializing = false
-# the radio element
-radio = null
-# url to recieve a playlist from the station
-playlistURL = "http://mp3-live.swr3.de/swr3_s.m3u"
-# sanity checks for inresponsive player resolving
-lastRestartTime = 0
-highFrequencyRestartCounter = 0
+
+# We avoid scoping issues by alerting the global scope to update the 
+# radio upon the GET-request's arrival.
+update_radio = (playlist) ->
+	if radio? then radio.accept(playlist) else reset()
+
+class Radio
+	# the is and the expected state might deviate if the user repeatedly clicks on
+	# the button while there was no response to the requests, yet.
+	_is_on: false
+	_expected_on: false
+	_radio: undefined
+
+	constructor: (@url) ->
+		@_prepare()
+	
+	start: ->
+		if @_radio?
+			@_radio.play()
+			@_is_on = true
+			@_set_icon "green"
+		@_expected_on = true
+
+	stop: ->
+		if @_radio?
+			console.log @_radio
+			@_radio.pause()
+			@_is_on = false
+			@_set_icon "red"
+		@_expected_on = false
+
+	trigger: ->
+		if @_is_on is @_expected_on
+			if @_is_on then @stop() else @start()
+		else 
+			@_expected_on = !@_expected_on
+
+	accept: (stream) ->
+		@_create_radio_element stream
+
+	_prepare: () ->
+		@_fetch_playlist(update_radio)
+
+	_fetch_playlist: (consumer) ->
+		jQuery.get(@url, consumer)
+
+	_create_radio_element: (playlist) ->
+		stream = @_get_stream_url(playlist)
+		radio = document.createElement('audio')
+		radio.setAttribute('src', stream)
+		console.log 
+		@_radio = radio
+		@_align_states()
+
+	_align_states: ->
+		if @_expected_on then @start() else @stop()
+		@_is_on = @_expected_on
+
+	_get_stream_url: (playlist) ->
+		for line in playlist.split("\n") when line.indexOf("#") isnt 0
+			return line
+
+	_set_icon: (color) ->
+		chrome.browserAction.setIcon({
+			path: "images/icon48#{color}.png"
+		})
+
+#### CHROME EXTENSION HANDLING ####
 
 chrome.browserAction.onClicked.addListener (tab) ->
 	trigger()
@@ -14,72 +73,24 @@ chrome.browserAction.onClicked.addListener (tab) ->
 chrome.runtime.onMessageExternal.addListener (request, sender, sendResponse) -> 
 	trigger() if (request?.intent is "trigger_swr3")
 
-trigger = () ->
-	if radio?
-		if radio.paused then start_stream() else stop_stream()
-	else
-		init_radio(playlistURL, start_stream) unless initializing	
-	turned_on = not turned_on
+contextMenuId = chrome.contextMenus.create({
+    "title": "Reset radio",
+    "contexts": ["browser_action"]
+    })
 
-init_radio = (url, callback) ->
-	initializing = true
-	jQuery.get(url, (content) -> 
-		lines = content.split("\n")
-		actual_url = findFirst(lines, (string) -> string.indexOf("#") isnt 0)
-		radio_tmp = document.createElement('audio');
-		radio_tmp.setId
-		radio_tmp.setAttribute('src', actual_url);
-		radio = radio_tmp
-		initializing = false
-		callback()
-	)
-
-findFirst = (array, predicate) ->
-	for elem in array when predicate(elem)
-		return elem
-
-start_stream = () ->
-	return if checkHighFrequencyRestarting() is "red"
-	radio.play()
-	if radio.paused
-		console.log("player irresponsive; reinitializing")
-		init_radio(playlistURL, start_stream)	
-	else
-		setIcon("green")
-
-checkHighFrequencyRestarting = () ->
-	status = "green"
-	currentTime = new Date().getTime()
-	if currentTime - lastRestartTime < 3 * 1000
-		console.log("suspicion raised")
-		highFrequencyRestartCounter++
-		if highFrequencyRestartCounter > 3
-			console.log("detected restarts in a high frequency; reinitializing")
-			reset()
-			status = "red"
-	else
-		highFrequencyRestartCounter = 0
-	lastRestartTime = currentTime
-	return status
-
-reset = () ->
-	radio = undefined
-	highFrequencyRestartCounter = 0
-	currentTime = 0
-	init_radio(playlistURL, start_stream)
-
-stop_stream = () ->
-	radio.pause()
-	if radio.paused
-		setIcon("red")
-	else
-		console.log("player irresponsive; reinitializing")
-		init_radio(playlistURL, stop_stream)
-
-setIcon = (kind) ->
-	chrome.browserAction.setIcon({
-		path: "images/icon48" + kind + ".png"
-	})
+chrome.contextMenus.onClicked.addListener (info, tab) ->
+	reset() if info.menuItemId is contextMenuId
 
 
+playlistURL = "http://mp3-live.swr3.de/swr3_s.m3u"
+
+radio = new Radio playlistURL
+
+trigger = ->
+	console.log "Triggered."
+	radio.trigger()
+
+reset = ->
+	radio.stop()
+	radio = new Radio playlistURL
 
