@@ -1,9 +1,17 @@
 # Author
-Maximilian Schwenger ([email](mailto:schwengermaximilian@gmail.com), [github](https://github.com/Schwenger)) 2015
+Maximilian Schwenger ([email](mailto:mail@mschwenger.de), [github](https://github.com/Schwenger)) 2015
+
+This is a minimalistic extension for Google Chrome. It allows to turn a radio stream for the German radio station SWR3 on and off with just one click, conveniently placed in the main tool bar. It contains a visual indicator for the current state: Red for 'off' and green for 'on'.
+
+No fancy features nobody would ever need: This extension focuses on the bare minimum. And it does it well.
+Enjoy!
 
 # Instructions for developers
-You can either work on the Javascript code directly or work on the coffeescript. For installation and compilation instructions please have a look @ [coffeescript website](coffeescript.org).
+After applying your changes you can compile your code using the coffeescript compiler ([coffeescript website](coffeescript.org).).
+Please use the provided Makefile for this process.
 
 ## Version history
  * 0.1 Initial
+ * 0.3 Restructured code base
+     - 0.3.1 Re-Introduced reset after long pause
 
