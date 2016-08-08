@@ -3,7 +3,7 @@
 
   "name": "__MSG_extName__",
   "description": "This extension will allow you to start and stop swr3's webradio service via an icon in the toolbar. The design mainly focuses on simplicity so we omit adding any unnecessary features.",
-  "version": "1.0",
+  "version": "2.1",
   "default_locale": "en",
 
   "browser_action": {
