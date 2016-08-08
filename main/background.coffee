@@ -1,8 +1,19 @@
+playlistURL = "http://mp3-live.swr3.de/swr3_s.m3u"
+
+radio = new Radio playlistURL
 
 # We avoid scoping issues by alerting the global scope to update the 
 # radio upon the GET-request's arrival.
 update_radio = (playlist) ->
 	if radio? then radio.accept(playlist) else reset()
+
+trigger = ->
+	console.log "Triggered."
+	radio.trigger()
+
+reset = ->
+	radio.stop()
+	radio = new Radio playlistURL
 
 class Radio
 	# the is and the expected state might deviate if the user repeatedly clicks on
@@ -81,16 +92,4 @@ contextMenuId = chrome.contextMenus.create({
 chrome.contextMenus.onClicked.addListener (info, tab) ->
 	reset() if info.menuItemId is contextMenuId
 
-
-playlistURL = "http://mp3-live.swr3.de/swr3_s.m3u"
-
-radio = new Radio playlistURL
-
-trigger = ->
-	console.log "Triggered."
-	radio.trigger()
-
-reset = ->
-	radio.stop()
-	radio = new Radio playlistURL
 
